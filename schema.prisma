@@ -1,0 +1,98 @@
+// datasource db defines the database connection settings.
+// It is configured for PostgreSQL and uses an environment variable for the connection URL.
+// The 'extensions' feature enables the use of PostgreSQL-specific data types.
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+}
+
+// generator db configures Prisma Client settings.
+// It is set up to use Prisma Client Python with asyncio interface and specific features.
+generator db {
+  provider                    = "prisma-client-py"
+  interface                   = "asyncio"
+  recursive_type_depth        = 5
+  previewFeatures             = ["postgresqlExtensions"]
+  enable_experimental_decimal = true
+}
+
+model User {
+  id        String   @id @default(dbgenerated("gen_random_uuid()"))
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roles    UserRole[]
+  requests APIRequest[]
+}
+
+model UserRole {
+  id     String @id @default(dbgenerated("gen_random_uuid()"))
+  role   Role
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model APIRequest {
+  id        String   @id @default(dbgenerated("gen_random_uuid()"))
+  createdAt DateTime @default(now())
+  endpoint  String
+  response  String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
+  joke   Joke?   @relation(fields: [jokeId], references: [id])
+  jokeId String?
+}
+
+model Joke {
+  id        String   @id @default(dbgenerated("gen_random_uuid()"))
+  content   String
+  source    String?
+  createdAt DateTime @default(now())
+
+  requests APIRequest[]
+}
+
+model APIEndpoint {
+  id          String     @id @default(dbgenerated("gen_random_uuid()"))
+  path        String     @unique
+  description String
+  method      HTTPMethod
+
+  formattingOptions ResponseFormat[]
+}
+
+model ResponseFormat {
+  id         String      @id @default(dbgenerated("gen_random_uuid()"))
+  formatType FormatType
+  endpointId String
+  endpoint   APIEndpoint @relation(fields: [endpointId], references: [id])
+}
+
+model JokeSource {
+  id        String   @id @default(dbgenerated("gen_random_uuid()"))
+  name      String
+  endpoint  String
+  apiKey    String?
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  API_USER
+  SYSTEM_ADMIN
+  DATABASE_MANAGER
+}
+
+enum HTTPMethod {
+  GET
+  POST
+  PUT
+}
+
+enum FormatType {
+  JSON
+  XML
+  PLAIN_TEXT
+}
+
